@@ -1,16 +1,15 @@
 services:
   - type: web
-    name: happy-helper
+    name: wmarket-backend
     env: node
     plan: free
-    buildCommand: NODE_ENV=development npm install && npm run build
+    rootDir: backend
+    buildCommand: npm install
     startCommand: npm start
     envVars:
       # ── Required ──────────────────────────────────────────────────────────────
       - key: NODE_ENV
         value: production
-      - key: NPM_CONFIG_PRODUCTION
-        value: "false"
       - key: MONGODB_URI
         sync: false
       - key: JWT_SECRET
@@ -18,7 +17,7 @@ services:
       - key: ADMIN_PASSWORD
         sync: false
 
-      # ── Frontend URL (used for CORS — set to your Render app URL) ─────────────
+      # ── Frontend URL (used for CORS — set to your Vercel app URL) ─────────────
       - key: FRONTEND_URL
         sync: false
 
