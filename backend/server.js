@@ -113,11 +113,17 @@ mongoose
   .connect(process.env.MONGODB_URI)
   .then(() => {
     console.log("Connected to MongoDB");
-    app.listen(PORT, () => {
-      console.log(`Server listening on port ${PORT} [${isProduction ? "production" : "development"}]`);
-    });
+    // Only start the server locally or on Render. Vercel handles this automatically.
+    if (!process.env.VERCEL) {
+      app.listen(PORT, () => {
+        console.log(`Server listening on port ${PORT} [${isProduction ? "production" : "development"}]`);
+      });
+    }
   })
   .catch((err) => {
     console.error("MongoDB connection error:", err);
-    process.exit(1);
+    if (!process.env.VERCEL) process.exit(1);
   });
+
+// ── Export app for Vercel Serverless Functions ───────────────────────────────
+export default app;
