@@ -1,0 +1,37 @@
+services:
+  - type: web
+    name: happy-helper
+    env: node
+    plan: free
+    buildCommand: NODE_ENV=development npm install && npm run build
+    startCommand: npm start
+    envVars:
+      # ── Required ──────────────────────────────────────────────────────────────
+      - key: NODE_ENV
+        value: production
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: MONGODB_URI
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # ── Frontend URL (used for CORS — set to your Render app URL) ─────────────
+      - key: FRONTEND_URL
+        sync: false
+
+      # ── Cloudinary (image uploads) ─────────────────────────────────────────────
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ── Email notifications (optional — Gmail App Password) ───────────────────
+      - key: EMAIL_USER
+        sync: false
+      - key: EMAIL_PASS
+        sync: false

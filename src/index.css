@@ -1,0 +1,94 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 40 30% 95%;
+    --foreground: 30 20% 12%;
+
+    --card: 38 28% 90%;
+    --card-foreground: 30 20% 12%;
+
+    --popover: 40 30% 95%;
+    --popover-foreground: 30 20% 12%;
+
+    --primary: 30 20% 12%;
+    --primary-foreground: 40 30% 95%;
+
+    --secondary: 38 28% 90%;
+    --secondary-foreground: 30 20% 12%;
+
+    --muted: 36 20% 84%;
+    --muted-foreground: 30 12% 50%;
+
+    --accent: 28 60% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --gold: 28 60% 50%;
+    --gold-light: 32 72% 62%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --success: 152 56% 40%;
+
+    --border: 34 16% 78%;
+    --input: 34 16% 78%;
+    --ring: 28 60% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 40 30% 95%;
+    --sidebar-foreground: 30 20% 12%;
+    --sidebar-primary: 30 20% 12%;
+    --sidebar-primary-foreground: 40 30% 95%;
+    --sidebar-accent: 38 28% 90%;
+    --sidebar-accent-foreground: 30 20% 12%;
+    --sidebar-border: 34 16% 78%;
+    --sidebar-ring: 28 60% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-body antialiased;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3 {
+    font-family: 'Playfair Display', serif;
+    font-weight: 400;
+  }
+  ::selection {
+    background: hsl(28 60% 50% / 0.2);
+    color: hsl(30 20% 12%);
+  }
+}
+
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .glass {
+    backdrop-filter: blur(16px) saturate(180%);
+    -webkit-backdrop-filter: blur(16px) saturate(180%);
+    background: hsl(40 30% 95% / 0.82);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, hsl(28 60% 50%), hsl(32 72% 62%));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}
