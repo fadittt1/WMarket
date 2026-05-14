@@ -1,8 +1,12 @@
 {
-  "rewrites": [
-    {
-      "source": "/api/:match*",
-      "destination": "https://<your-render-url>.onrender.com/api/:match*"
+  "experimentalServices": {
+    "frontend": {
+      "routePrefix": "/",
+      "framework": "vite"
+    },
+    "backend": {
+      "entrypoint": "backend",
+      "routePrefix": "/api"
     }
-  ]
+  }
 }
