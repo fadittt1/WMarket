@@ -19,6 +19,7 @@ import { router as categoriesRouter } from "./src/routes/categories.js";
 import { router as packsRouter } from "./src/routes/packs.js";
 import { router as authRouter } from "./src/routes/auth.js";
 import { router as uploadRouter } from "./src/routes/upload.js";
+import { router as usersRouter } from "./src/routes/users.js";
 import { dbConnect } from "./src/lib/mongodb.js";
 
 // ── Mandatory env guards ──────────────────────────────────────────────────────
@@ -108,6 +109,7 @@ app.use("/api/categories", categoriesRouter);
 app.use("/api/packs", packsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/upload", uploadRouter);
+app.use("/api/users", usersRouter);
 
 // ── Static frontend (only in non-Vercel environments like Render) ─────────────
 if (!process.env.VERCEL) {

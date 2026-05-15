@@ -63,6 +63,7 @@ interface DB {
   categories: string[];
   orders: Order[];
   packs: Pack[];
+  users: User[];
 }
 
 const defaultDB: DB = {
@@ -70,6 +71,7 @@ const defaultDB: DB = {
   categories: [],
   orders: [],
   packs: [],
+  users: [],
 };
 
 const USER_KEY = "shoppy_user_data";
@@ -127,17 +129,19 @@ export function useStore() {
         } catch { return []; }
       };
 
-      const [prRes, paRes, caRes, orRes] = await Promise.all([
+      const [prRes, paRes, caRes, orRes, usersRes] = await Promise.all([
         safeFetch("/api/products"),
         safeFetch("/api/packs"),
         safeFetch("/api/categories"),
-        role === "admin" ? safeFetch("/api/orders", { headers: getHeaders() }) : Promise.resolve([])
+        role === "admin" ? safeFetch("/api/orders", { headers: getHeaders() }) : Promise.resolve([]),
+        role === "admin" ? safeFetch("/api/users", { headers: getHeaders() }) : Promise.resolve([])
       ]);
       setDb({
         products: mapId(Array.isArray(prRes) ? prRes : []),
         packs: mapId(Array.isArray(paRes) ? paRes : []),
         categories: Array.isArray(caRes) ? caRes.map((c: any) => c.name) : [],
         orders: mapId(Array.isArray(orRes) ? orRes : []),
+        users: Array.isArray(usersRes) ? usersRes.map((u: any) => ({ ...u, id: u._id })) : [],
       });
     } catch (e) {
       console.error("Failed to load DB state", e);
@@ -434,6 +438,26 @@ export function useStore() {
     } catch(e) { console.error(e) }
   }, [fetchData]);
 
+  const updateUserRole = useCallback(async (userId: string, role: "admin" | "user") => {
+    try {
+      const r = await fetch(`/api/users/${userId}/role`, {
+        method: "PATCH", headers: getHeaders(), body: JSON.stringify({ role })
+      });
+      if (r.ok) await fetchData();
+      else {
+        const data = await r.json().catch(() => ({}));
+        console.error("[updateUserRole] Error:", data.error);
+      }
+    } catch(e) { console.error(e) }
+  }, [fetchData]);
+
+  const deleteUser = useCallback(async (userId: string) => {
+    try {
+      await fetch(`/api/users/${userId}`, { method: "DELETE", headers: getHeaders() });
+      await fetchData();
+    } catch(e) { console.error(e) }
+  }, [fetchData]);
+
   return {
     db, cart, cartTotal, cartCount,
     currentUser, loginReq, registerReq, logout,
@@ -446,6 +470,7 @@ export function useStore() {
     addReaction, addComment, deleteComment, editComment,
     addPack, updatePack, deletePack,
     addPackReaction, addPackComment, deletePackComment, editPackComment,
+    updateUserRole, deleteUser,
     refreshData: fetchData
   };
 }

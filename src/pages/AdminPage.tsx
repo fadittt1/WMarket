@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 
 const AdminPage = () => {
   const store = useAppStore();
-  const { db, currentUser, loginReq, registerReq, uploadImage, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, markOrderDone, deleteOrder, addPack, updatePack, deletePack } = store;
+  const { db, currentUser, loginReq, registerReq, uploadImage, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, markOrderDone, deleteOrder, addPack, updatePack, deletePack, updateUserRole, deleteUser } = store;
   const navigate = useNavigate();
 
   const [phone, setPhone] = useState("");
@@ -35,7 +35,7 @@ const AdminPage = () => {
     }
   };
 
-  const [tab, setTab] = useState<"products" | "orders" | "categories" | "packs">("products");
+  const [tab, setTab] = useState<"products" | "orders" | "categories" | "packs" | "users">("products");
 
   // Product form
   const [editId, setEditId] = useState<string | null>(null);
@@ -332,7 +332,7 @@ const AdminPage = () => {
 
           {/* Tabs */}
           <div className="flex border border-border rounded-xl overflow-hidden mb-5">
-            {(["products", "orders", "categories", "packs"] as const).map((t) => (
+            {(["products", "orders", "categories", "packs", "users"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -823,6 +823,80 @@ const AdminPage = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Users Tab */}
+          {tab === "users" && (
+            <div>
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-medium">Registered users ({db.users.length})</h3>
+              </div>
+
+              {!db.users.length ? (
+                <div className="text-center py-16">
+                  <div className="text-[48px] mb-3">👥</div>
+                  <p className="text-muted-foreground text-[13px]">No users yet.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {db.users.map((u) => (
+                    <div key={u.id} className="bg-card rounded-xl px-4 py-3 flex items-center gap-3 border border-border/60">
+                      {/* Avatar */}
+                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-sm font-display text-accent shrink-0">
+                        {u.name?.[0]?.toUpperCase() ?? "?"}
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-[13px] font-semibold leading-tight">{u.name}</div>
+                        <div className="text-[11px] text-muted-foreground">📞 {u.phone}</div>
+                      </div>
+
+                      {/* Role badge */}
+                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider shrink-0 ${
+                        u.role === "admin"
+                          ? "bg-accent/20 text-accent border border-accent/30"
+                          : "bg-muted text-muted-foreground border border-border"
+                      }`}>
+                        {u.role}
+                      </span>
+
+                      {/* Actions */}
+                      <div className="flex gap-1.5 shrink-0">
+                        {u.id !== currentUser?.id && (
+                          <button
+                            onClick={() => {
+                              const newRole = u.role === "admin" ? "user" : "admin";
+                              if (confirm(`${newRole === "admin" ? "Promote" : "Demote"} ${u.name} to ${newRole}?`)) {
+                                updateUserRole(u.id, newRole);
+                              }
+                            }}
+                            className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition-colors ${
+                              u.role === "admin"
+                                ? "bg-muted text-foreground border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                : "bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                            }`}
+                          >
+                            {u.role === "admin" ? "Demote" : "Make Admin"}
+                          </button>
+                        )}
+                        {u.id !== currentUser?.id && (
+                          <button
+                            onClick={() => { if (confirm(`Delete user ${u.name}? This cannot be undone.`)) deleteUser(u.id); }}
+                            className="px-2.5 py-1 text-[11px] rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
+                          >
+                            🗑
+                          </button>
+                        )}
+                        {u.id === currentUser?.id && (
+                          <span className="text-[10px] text-muted-foreground italic px-2">You</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
