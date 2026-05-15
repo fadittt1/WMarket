@@ -109,12 +109,14 @@ app.use("/api/packs", packsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/upload", uploadRouter);
 
-// ── Serve static frontend in production ──────────────────────────────────────
-app.use(express.static(path.join(__dirname, "../dist")));
-app.get("*", (req, res, next) => {
-  if (req.path.startsWith("/api")) return next();
-  res.sendFile(path.join(__dirname, "../dist/index.html"));
-});
+// ── Static frontend (only in non-Vercel environments like Render) ─────────────
+if (!process.env.VERCEL) {
+  app.use(express.static(path.join(__dirname, "../dist")));
+  app.get("*", (req, res, next) => {
+    if (req.path.startsWith("/api")) return next();
+    res.sendFile(path.join(__dirname, "../dist/index.html"));
+  });
+}
 
 // ── Global error handler ─────────────────────────────────────────────────────
 // eslint-disable-next-line no-unused-vars
