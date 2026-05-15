@@ -13,7 +13,7 @@ const Navbar = ({ onCartOpen }: NavbarProps) => {
   return (
     <nav className="flex justify-between items-center px-5 md:px-10 py-4 md:py-5 sticky top-0 glass z-50 border-b border-border/50">
       <Link to="/" className="font-display text-[22px] tracking-tight text-foreground">
-        Shop<em className="text-gradient italic">py.</em>
+        W<em className="text-gradient italic">Market</em>
       </Link>
       <div className="flex items-center gap-2">
         {currentUser ? (
