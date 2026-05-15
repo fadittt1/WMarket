@@ -19,6 +19,7 @@ import { router as categoriesRouter } from "./src/routes/categories.js";
 import { router as packsRouter } from "./src/routes/packs.js";
 import { router as authRouter } from "./src/routes/auth.js";
 import { router as uploadRouter } from "./src/routes/upload.js";
+import { dbConnect } from "./src/lib/mongodb.js";
 
 // ── Mandatory env guards ──────────────────────────────────────────────────────
 let missingEnvs = [];
@@ -50,7 +51,8 @@ app.use(
 // ── CORS — lock down to your deployed origin in production ────────────────────
 const allowedOrigins = isProduction
   ? [
-      process.env.FRONTEND_URL, // Set this in Render: https://your-app.onrender.com
+      process.env.FRONTEND_URL, // Manually set
+      "https://w-market.vercel.app" // Main production domain
     ].filter(Boolean)
   : ["http://localhost:8080", "http://localhost:3000", "http://localhost:5173"];
 
@@ -59,7 +61,15 @@ app.use(
     origin: (origin, callback) => {
       // Allow requests with no origin (mobile apps, curl, Render's health checks)
       if (!origin) return callback(null, true);
+      
+      // Exact match check
       if (allowedOrigins.includes(origin)) return callback(null, true);
+      
+      // Dynamic check for Vercel preview branches
+      if (isProduction && origin.endsWith(".vercel.app")) {
+        return callback(null, true);
+      }
+      
       callback(new Error(`CORS: Origin '${origin}' not allowed`));
     },
     credentials: true,
@@ -76,6 +86,19 @@ app.use(express.urlencoded({ extended: true, limit: "2mb" }));
 // ── Health check ──────────────────────────────────────────────────────────────
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok" });
+});
+
+// ── Database Connection Middleware ────────────────────────────────────────────
+// Ensures MongoDB is connected before handling any API requests, especially important for serverless.
+app.use("/api", async (req, res, next) => {
+  if (req.path === "/health") return next(); // Skip DB check for simple health check
+  try {
+    await dbConnect();
+    next();
+  } catch (error) {
+    console.error("Database connection error in middleware:", error);
+    res.status(500).json({ error: "Database connection failed" });
+  }
 });
 
 // ── API routes ────────────────────────────────────────────────────────────────
@@ -110,21 +133,19 @@ app.use((err, req, res, _next) => {
 });
 
 // ── Database & server startup ─────────────────────────────────────────────────
-mongoose
-  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/missing_uri")
-  .then(() => {
-    console.log("Connected to MongoDB");
-    // Only start the server locally or on Render. Vercel handles this automatically.
-    if (!process.env.VERCEL) {
+// Only start the server locally or on Render. Vercel handles this automatically.
+if (!process.env.VERCEL) {
+  dbConnect()
+    .then(() => {
       app.listen(PORT, () => {
         console.log(`Server listening on port ${PORT} [${isProduction ? "production" : "development"}]`);
       });
-    }
-  })
-  .catch((err) => {
-    console.error("MongoDB connection error:", err);
-    if (!process.env.VERCEL) process.exit(1);
-  });
+    })
+    .catch((err) => {
+      console.error("Initial MongoDB connection error:", err);
+      process.exit(1);
+    });
+}
 
 // ── Export app for Vercel Serverless Functions ───────────────────────────────
 export default app;
