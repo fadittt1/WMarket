@@ -24,18 +24,9 @@ const OrderPage = () => {
     }
     setError(false);
     
-    // Register the order in the backend database
+    // Register the order — backend will automatically send a WhatsApp notification to the admin via Twilio
     submitOrder(name.trim(), finalPhone, notes.trim());
-
-    // Construct the WhatsApp message payload
-    const message = `Hi Shoppy ✨ I just placed a new order!\n\n*Name:* ${name.trim()}\n*Phone:* ${finalPhone}\n*Items:* ${cart.map(c => `${c.qty}x ${c.name}`).join(', ')}\n*Total:* ${cartTotal.toFixed(3)} TND\n*Notes:* ${notes.trim() || 'None'}`;
     
-    const whatsappUrl = `https://api.whatsapp.com/send/?phone=27737131&text=${encodeURIComponent(message)}`;
-    
-    // Launch WhatsApp link into a new tab (or deep-link into app)
-    window.open(whatsappUrl, '_blank');
-    
-    // Route current tab to success!
     navigate("/success");
   };
 

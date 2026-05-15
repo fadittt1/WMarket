@@ -1,5 +1,6 @@
 import express from "express";
 import nodemailer from "nodemailer";
+import twilio from "twilio";
 import { Order } from "../models/Order.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 
@@ -15,6 +16,39 @@ function getTransporter() {
       pass: process.env.EMAIL_PASS,
     },
   });
+}
+
+// ── Twilio WhatsApp notification ──────────────────────────────────────────────
+// Sends a WhatsApp message to the admin number using the Twilio sandbox / production account.
+// Required env vars: TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_WHATSAPP_FROM, ADMIN_WHATSAPP_TO
+function sendWhatsApp(order) {
+  const sid = process.env.TWILIO_ACCOUNT_SID;
+  const token = process.env.TWILIO_AUTH_TOKEN;
+  const from = process.env.TWILIO_WHATSAPP_FROM; // e.g. "whatsapp:+14155238886" (sandbox) or your approved number
+  const to = process.env.ADMIN_WHATSAPP_TO;      // e.g. "whatsapp:+21627737131"
+
+  if (!sid || !token || !from || !to) return; // Silently skip if not configured
+
+  const client = twilio(sid, token);
+
+  const itemLines = order.items.map((i) => `  • ${i.qty}x ${i.name} — ${i.price.toFixed(3)} TND`).join("\n");
+  const body = [
+    `🛒 *New Order Received!*`,
+    ``,
+    `👤 *Name:* ${order.name}`,
+    `📞 *Phone:* ${order.phone}`,
+    ``,
+    `*Items:*`,
+    itemLines,
+    ``,
+    `💰 *Total:* ${order.total.toFixed(3)} TND`,
+    order.notes ? `📝 *Notes:* ${order.notes}` : null,
+  ].filter(Boolean).join("\n");
+
+  client.messages
+    .create({ from, to, body })
+    .then((msg) => console.log(`[Twilio] WhatsApp sent — SID: ${msg.sid}`))
+    .catch((err) => console.error("[Twilio] WhatsApp error:", err.message));
 }
 
 // ── Get all orders (admin only) ───────────────────────────────────────────────
@@ -55,7 +89,11 @@ router.post("/", async (req, res, next) => {
       date: new Date().toLocaleDateString("en-GB"),
     });
 
-    // Send email notification non-blocking, only if email is configured
+    // ── Fire-and-forget notifications (non-blocking) ──────────────────────────
+    // 1. WhatsApp via Twilio
+    sendWhatsApp(order);
+
+    // 2. Email notification (if configured)
     const transporter = getTransporter();
     if (transporter) {
       const emailText = [
