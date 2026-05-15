@@ -14,7 +14,7 @@ const OrderPage = () => {
   const [notes, setNotes] = useState("");
   const [error, setError] = useState(false);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     let finalPhone = phone.trim();
     if (currentUser?.role === "admin") finalPhone = "Admin bypassing phone";
 
@@ -23,10 +23,19 @@ const OrderPage = () => {
       return;
     }
     setError(false);
-    
-    // Register the order — backend will automatically send a WhatsApp notification to the admin via Twilio
-    submitOrder(name.trim(), finalPhone, notes.trim());
-    
+
+    const items = cart.map(c => ({ name: c.name, qty: c.qty, price: c.price }));
+    const total = cartTotal;
+
+    // Backend saves order + fires Twilio WhatsApp automatically.
+    // whatsappUrl is also returned as a fallback in case Twilio sandbox isn't active yet.
+    const result = await submitOrder(name.trim(), finalPhone, notes.trim(), items, total);
+
+    if (result?.whatsappUrl) {
+      // Open WhatsApp as a silent fallback — ensures admin is notified even if Twilio sandbox isn't joined yet
+      window.open(result.whatsappUrl, "_blank");
+    }
+
     navigate("/success");
   };
 

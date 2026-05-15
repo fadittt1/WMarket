@@ -272,13 +272,11 @@ export function useStore() {
   const cartTotal = cart.reduce((s, c) => s + c.price * c.qty, 0);
   const cartCount = cart.reduce((s, c) => s + c.qty, 0);
 
-  const submitOrder = useCallback(async (name: string, phone: string, notes: string) => {
-    const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
-    const orderData = {
-      name, phone, notes,
-      items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
-      total,
-    };
+  const submitOrder = useCallback(async (name: string, phone: string, notes: string, items: {name:string;qty:number;price:number}[], total: number): Promise<{ok: boolean; whatsappUrl: string | null}> => {
+    const orderData = { name, phone, notes, items, total };
+    const whatsappUrl = `https://wa.me/21627737131?text=${encodeURIComponent(
+      `🛒 *New Order!*\n\n👤 *Name:* ${name}\n📞 *Phone:* ${phone}\n\n*Items:*\n${items.map(i => `  • ${i.qty}x ${i.name} — ${i.price.toFixed(3)} TND`).join('\n')}\n\n💰 *Total:* ${total.toFixed(3)} TND${notes ? `\n📝 *Notes:* ${notes}` : ''}`
+    )}`;
     try {
       const r = await fetch("/api/orders", {
         method: "POST", headers: getHeaders(), body: JSON.stringify(orderData)
@@ -287,8 +285,10 @@ export function useStore() {
         if (currentUser?.role === "admin") await fetchData();
         setCart([]);
         localStorage.removeItem(CART_KEY);
+        return { ok: true, whatsappUrl };
       }
-    } catch(e) { console.error(e) }
+      return { ok: false, whatsappUrl };
+    } catch(e) { console.error(e); return { ok: false, whatsappUrl }; }
   }, [cart, currentUser, fetchData]);
 
   const addProduct = useCallback(async (product: Omit<Product, "id">) => {
