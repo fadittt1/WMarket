@@ -27,7 +27,7 @@ const Hero = () => (
         transition={{ duration: 0.6, delay: 0.1 }}
         className="font-display text-[56px] md:text-[72px] lg:text-[84px] leading-none tracking-[-2px] mb-1"
       >
-        Shop<em className="text-gradient italic">py.</em>
+        W<em style={{ fontSize: 65 }} className="text-gradient italic">Market</em>
       </motion.h1>
       <motion.p
         initial={{ opacity: 0 }}

@@ -56,6 +56,7 @@ export interface User {
   name: string;
   phone: string;
   role: "admin" | "user";
+  superAdmin?: boolean;
 }
 
 interface DB {

@@ -6,6 +6,7 @@ const UserSchema = new mongoose.Schema(
     phone: { type: String, unique: true }, // Empty string allowed
     password: { type: String, required: true },
     role: { type: String, enum: ["user", "admin"], default: "user" },
+    superAdmin: { type: Boolean, default: false }, // Only the original owner — cannot be set via API
   },
   { timestamps: true }
 );

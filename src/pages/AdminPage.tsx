@@ -831,6 +831,11 @@ const AdminPage = () => {
             <div>
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-sm font-medium">Registered users ({db.users.length})</h3>
+                {currentUser?.superAdmin && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-accent/20 text-accent border border-accent/30 font-semibold uppercase tracking-wider">
+                    ⭐ Super Admin
+                  </span>
+                )}
               </div>
 
               {!db.users.length ? (
@@ -840,65 +845,82 @@ const AdminPage = () => {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {db.users.map((u) => (
-                    <div key={u.id} className="bg-card rounded-xl px-4 py-3 flex items-center gap-3 border border-border/60">
-                      {/* Avatar */}
-                      <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-sm font-display text-accent shrink-0">
-                        {u.name?.[0]?.toUpperCase() ?? "?"}
-                      </div>
+                  {db.users.map((u) => {
+                    const isMe = u.id === currentUser?.id;
+                    const isSuperAdminTarget = u.superAdmin;
+                    // A regular admin cannot act on other admins — only superAdmin can
+                    const canAct = !isMe && !isSuperAdminTarget && (u.role === "user" || currentUser?.superAdmin);
 
-                      {/* Info */}
-                      <div className="flex-1 min-w-0">
-                        <div className="text-[13px] font-semibold leading-tight">{u.name}</div>
-                        <div className="text-[11px] text-muted-foreground">📞 {u.phone}</div>
-                      </div>
+                    return (
+                      <div key={u.id} className={`bg-card rounded-xl px-4 py-3 flex items-center gap-3 border ${isSuperAdminTarget ? "border-accent/40 bg-accent/5" : "border-border/60"}`}>
+                        {/* Avatar */}
+                        <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center text-sm font-display text-accent shrink-0">
+                          {u.name?.[0]?.toUpperCase() ?? "?"}
+                        </div>
 
-                      {/* Role badge */}
-                      <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider shrink-0 ${
-                        u.role === "admin"
-                          ? "bg-accent/20 text-accent border border-accent/30"
-                          : "bg-muted text-muted-foreground border border-border"
-                      }`}>
-                        {u.role}
-                      </span>
+                        {/* Info */}
+                        <div className="flex-1 min-w-0">
+                          <div className="text-[13px] font-semibold leading-tight flex items-center gap-1.5">
+                            {u.name}
+                            {isSuperAdminTarget && <span className="text-[9px] text-accent">⭐</span>}
+                          </div>
+                          <div className="text-[11px] text-muted-foreground">📞 {u.phone}</div>
+                        </div>
 
-                      {/* Actions */}
-                      <div className="flex gap-1.5 shrink-0">
-                        {u.id !== currentUser?.id && (
-                          <button
-                            onClick={() => {
-                              const newRole = u.role === "admin" ? "user" : "admin";
-                              if (confirm(`${newRole === "admin" ? "Promote" : "Demote"} ${u.name} to ${newRole}?`)) {
-                                updateUserRole(u.id, newRole);
-                              }
-                            }}
-                            className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition-colors ${
-                              u.role === "admin"
-                                ? "bg-muted text-foreground border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
-                                : "bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
-                            }`}
-                          >
-                            {u.role === "admin" ? "Demote" : "Make Admin"}
-                          </button>
-                        )}
-                        {u.id !== currentUser?.id && (
-                          <button
-                            onClick={() => { if (confirm(`Delete user ${u.name}? This cannot be undone.`)) deleteUser(u.id); }}
-                            className="px-2.5 py-1 text-[11px] rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
-                          >
-                            🗑
-                          </button>
-                        )}
-                        {u.id === currentUser?.id && (
-                          <span className="text-[10px] text-muted-foreground italic px-2">You</span>
-                        )}
+                        {/* Role badge */}
+                        <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-semibold uppercase tracking-wider shrink-0 ${
+                          u.role === "admin"
+                            ? "bg-accent/20 text-accent border border-accent/30"
+                            : "bg-muted text-muted-foreground border border-border"
+                        }`}>
+                          {u.role}
+                        </span>
+
+                        {/* Actions */}
+                        <div className="flex gap-1.5 shrink-0 items-center">
+                          {isMe && (
+                            <span className="text-[10px] text-muted-foreground italic px-2">You</span>
+                          )}
+
+                          {canAct && (
+                            <button
+                              onClick={() => {
+                                const newRole = u.role === "admin" ? "user" : "admin";
+                                if (confirm(`${newRole === "admin" ? "Promote" : "Demote"} ${u.name} to ${newRole}?`)) {
+                                  updateUserRole(u.id, newRole as "admin" | "user");
+                                }
+                              }}
+                              className={`px-2.5 py-1 text-[11px] rounded-lg border font-medium transition-colors ${
+                                u.role === "admin"
+                                  ? "bg-muted text-foreground border-border hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30"
+                                  : "bg-accent/10 text-accent border-accent/30 hover:bg-accent/20"
+                              }`}
+                            >
+                              {u.role === "admin" ? "Demote" : "Make Admin"}
+                            </button>
+                          )}
+
+                          {canAct && (
+                            <button
+                              onClick={() => { if (confirm(`Delete user ${u.name}? This cannot be undone.`)) deleteUser(u.id); }}
+                              className="px-2.5 py-1 text-[11px] rounded-lg bg-destructive/10 text-destructive border border-destructive/20 hover:bg-destructive/20 transition-colors"
+                            >
+                              🗑
+                            </button>
+                          )}
+
+                          {!isMe && !canAct && !isSuperAdminTarget && (
+                            <span className="text-[10px] text-muted-foreground italic px-2">—</span>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
           )}
+
         </div>
       )}
     </div>

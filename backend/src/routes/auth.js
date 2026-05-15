@@ -65,7 +65,7 @@ router.post("/register", registerLimiter, async (req, res, next) => {
     );
 
     res.status(201).json({
-      user: { id: user._id, name: user.name, phone: user.phone, role: user.role },
+      user: { id: user._id, name: user.name, phone: user.phone, role: user.role, superAdmin: user.superAdmin },
       token,
     });
   } catch (err) {
@@ -103,7 +103,7 @@ router.post("/login", loginLimiter, async (req, res, next) => {
     );
 
     res.json({
-      user: { id: user._id, name: user.name, phone: user.phone, role: user.role },
+      user: { id: user._id, name: user.name, phone: user.phone, role: user.role, superAdmin: user.superAdmin },
       token,
     });
   } catch (err) {
