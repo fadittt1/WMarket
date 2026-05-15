@@ -119,11 +119,19 @@ export function useStore() {
   const fetchData = useCallback(async () => {
     try {
       const role = currentUser?.role;
+      const safeFetch = async (url: string, options?: RequestInit) => {
+        try {
+          const r = await fetch(url, options);
+          if (!r.ok) return [];
+          return await r.json();
+        } catch { return []; }
+      };
+
       const [prRes, paRes, caRes, orRes] = await Promise.all([
-        fetch("/api/products").then(r => r.json()),
-        fetch("/api/packs").then(r => r.json()),
-        fetch("/api/categories").then(r => r.json()),
-        role === "admin" ? fetch("/api/orders", { headers: getHeaders() }).then(r => r.json()).catch(() => []) : Promise.resolve([])
+        safeFetch("/api/products"),
+        safeFetch("/api/packs"),
+        safeFetch("/api/categories"),
+        role === "admin" ? safeFetch("/api/orders", { headers: getHeaders() }) : Promise.resolve([])
       ]);
       setDb({
         products: mapId(Array.isArray(prRes) ? prRes : []),

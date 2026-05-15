@@ -21,17 +21,18 @@ import { router as authRouter } from "./src/routes/auth.js";
 import { router as uploadRouter } from "./src/routes/upload.js";
 
 // ── Mandatory env guards ──────────────────────────────────────────────────────
-if (!process.env.MONGODB_URI) {
-  console.error("FATAL: MONGODB_URI is not set. Exiting.");
-  process.exit(1);
-}
-if (!process.env.JWT_SECRET) {
-  console.error("FATAL: JWT_SECRET is not set. Exiting.");
-  process.exit(1);
-}
-if (!process.env.ADMIN_PASSWORD) {
-  console.error("FATAL: ADMIN_PASSWORD is not set. Exiting.");
-  process.exit(1);
+let missingEnvs = [];
+if (!process.env.MONGODB_URI) missingEnvs.push("MONGODB_URI");
+if (!process.env.JWT_SECRET) missingEnvs.push("JWT_SECRET");
+if (!process.env.ADMIN_PASSWORD) missingEnvs.push("ADMIN_PASSWORD");
+
+if (missingEnvs.length > 0) {
+  console.error(`FATAL: Missing environment variables: ${missingEnvs.join(", ")}`);
+  if (!process.env.VERCEL) {
+    process.exit(1);
+  } else {
+    console.error("Running on Vercel without mandatory env variables. API requests may fail.");
+  }
 }
 
 const app = express();
@@ -110,7 +111,7 @@ app.use((err, req, res, _next) => {
 
 // ── Database & server startup ─────────────────────────────────────────────────
 mongoose
-  .connect(process.env.MONGODB_URI)
+  .connect(process.env.MONGODB_URI || "mongodb://localhost:27017/missing_uri")
   .then(() => {
     console.log("Connected to MongoDB");
     // Only start the server locally or on Render. Vercel handles this automatically.
