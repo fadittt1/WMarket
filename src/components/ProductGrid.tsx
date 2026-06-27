@@ -121,7 +121,7 @@ const ProductGrid = () => {
             <p className="text-sm">No products found.</p>
           </motion.div>
         ) : (
-          <div className="columns-2 md:columns-3 lg:columns-4 gap-3 md:gap-4 space-y-3 md:space-y-4">
+          <div className="columns-2 md:columns-3 lg:columns-4 gap-3 md:gap-4">
             {filtered.map((item, i) => {
               if (item.itemType === 'pack') {
                 const pack = item as PackItem;
@@ -131,7 +131,7 @@ const ProductGrid = () => {
                     initial={{ opacity: 0, y: 12 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ duration: 0.3, delay: i * 0.04 }}
-                    style={{ background: '#efe8d6', borderRadius: '16px', overflow: 'hidden', position: 'relative', breakInside: 'avoid', marginBottom: '8px', cursor: 'pointer' }}
+                    style={{ background: '#efe8d6', borderRadius: '16px', overflow: 'hidden', position: 'relative', breakInside: 'avoid', marginBottom: '14px', cursor: 'pointer' }}
                     onClick={() => setSelectedPack(pack)}
                   >
                     <span style={{ position: 'absolute', top: '8px', left: '8px', background: '#2a2318', color: '#e8a955', fontSize: '8px', letterSpacing: '.1em', textTransform: 'uppercase', padding: '3px 7px', borderRadius: '8px', zIndex: 2 }}>Pack</span>
@@ -161,7 +161,7 @@ const ProductGrid = () => {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.3, delay: i * 0.04 }}
                   onClick={() => setSelectedProduct(p)}
-                  className="group break-inside-avoid bg-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all duration-200 shadow-card hover:shadow-elevated relative"
+                  className="group break-inside-avoid mb-3 md:mb-4 bg-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all duration-200 shadow-card hover:shadow-elevated relative"
                 >
                   {p.badge && (
                     <div className="absolute top-2.5 left-2.5 bg-accent text-accent-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full z-10 font-medium shadow-soft">
@@ -173,7 +173,8 @@ const ProductGrid = () => {
                     style={p.img ? undefined : { height: `${EMOJI_HEIGHTS[i % EMOJI_HEIGHTS.length]}px` }}
                   >
                     {p.img ? (
-                      <img src={p.img} alt={p.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                      // Natural aspect ratio (no crop) → varied card heights = Pinterest masonry
+                      <img src={p.img} alt={p.name} loading="lazy" className="block w-full h-auto group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <span className="text-[52px] group-hover:scale-110 transition-transform duration-300">{p.emoji || "📦"}</span>
                     )}
