@@ -20,6 +20,8 @@ import { router as packsRouter } from "./src/routes/packs.js";
 import { router as authRouter } from "./src/routes/auth.js";
 import { router as uploadRouter } from "./src/routes/upload.js";
 import { router as usersRouter } from "./src/routes/users.js";
+import { syncRouter } from "./src/routes/sync.js";
+import { syncFromSheets } from "./src/lib/sheetSync.js";
 import { dbConnect } from "./src/lib/mongodb.js";
 
 // ── Mandatory env guards ──────────────────────────────────────────────────────
@@ -110,6 +112,7 @@ app.use("/api/packs", packsRouter);
 app.use("/api/auth", authRouter);
 app.use("/api/upload", uploadRouter);
 app.use("/api/users", usersRouter);
+app.use("/api/sync", syncRouter);
 
 // ── Static frontend (only in non-Vercel environments like Render) ─────────────
 if (!process.env.VERCEL) {
@@ -144,6 +147,17 @@ if (!process.env.VERCEL) {
       app.listen(PORT, () => {
         console.log(`Server listening on port ${PORT} [${isProduction ? "production" : "development"}]`);
       });
+
+      // ── Periodic sheet sync (while the server is awake) ──────────────────────
+      // Serverless platforms can't run timers — there, use an external cron hitting
+      // POST /api/sync/run with the SYNC_SECRET header instead.
+      const intervalMin = Number(process.env.SYNC_INTERVAL_MINUTES) || 15;
+      const runSync = () =>
+        syncFromSheets()
+          .then((r) => console.log(`[sync] upserted=${r.upserted} removed=${r.removed} skipped=${r.skipped} errors=${r.errors.length}`))
+          .catch((e) => console.error("[sync] failed:", e.message));
+      runSync(); // initial run shortly after boot
+      setInterval(runSync, intervalMin * 60 * 1000);
     })
     .catch((err) => {
       console.error("Initial MongoDB connection error:", err);

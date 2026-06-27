@@ -59,6 +59,21 @@ export interface User {
   superAdmin?: boolean;
 }
 
+export interface SyncSource {
+  label: string;
+  url: string;
+}
+
+export interface SyncReport {
+  startedAt: string;
+  finishedAt?: string;
+  upserted: number;
+  removed: number;
+  skipped: number;
+  errors: { source: string; message: string }[];
+  sources: { label: string; url: string; rows: number; upserted: number; skipped: number; error?: string }[];
+}
+
 interface DB {
   products: Product[];
   categories: string[];
@@ -276,7 +291,9 @@ export function useStore() {
     const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
     const orderData = {
       name, phone, notes,
-      items: cart.map((c) => ({ name: c.name, qty: c.qty, price: c.price })),
+      // Send the product id so the server can recompute the authoritative price.
+      // name/price are sent for backward compatibility only; the server ignores them.
+      items: cart.map((c) => ({ id: c.id, name: c.name, qty: c.qty, price: c.price })),
       total,
     };
     try {
@@ -459,6 +476,34 @@ export function useStore() {
     } catch(e) { console.error(e) }
   }, [fetchData]);
 
+  // ── Google Sheets sync ──────────────────────────────────────────────────────
+  const getSyncConfig = useCallback(async (): Promise<{ sources: SyncSource[]; lastRunAt: string | null; lastReport: SyncReport | null } | null> => {
+    try {
+      const r = await fetch("/api/sync/config", { headers: getHeaders() });
+      if (!r.ok) return null;
+      return await r.json();
+    } catch (e) { console.error(e); return null; }
+  }, []);
+
+  const saveSyncConfig = useCallback(async (sources: SyncSource[]): Promise<boolean> => {
+    try {
+      const r = await fetch("/api/sync/config", {
+        method: "PUT", headers: getHeaders(), body: JSON.stringify({ sources })
+      });
+      return r.ok;
+    } catch (e) { console.error(e); return false; }
+  }, []);
+
+  const runSync = useCallback(async (): Promise<SyncReport | null> => {
+    try {
+      const r = await fetch("/api/sync/run", { method: "POST", headers: getHeaders() });
+      if (!r.ok) return null;
+      const report = await r.json();
+      await fetchData();
+      return report;
+    } catch (e) { console.error(e); return null; }
+  }, [fetchData]);
+
   return {
     db, cart, cartTotal, cartCount,
     currentUser, loginReq, registerReq, logout,
@@ -472,6 +517,7 @@ export function useStore() {
     addPack, updatePack, deletePack,
     addPackReaction, addPackComment, deletePackComment, editPackComment,
     updateUserRole, deleteUser,
+    getSyncConfig, saveSyncConfig, runSync,
     refreshData: fetchData
   };
 }

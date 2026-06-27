@@ -1,7 +1,9 @@
 import express from "express";
+import mongoose from "mongoose";
 import nodemailer from "nodemailer";
 import twilio from "twilio";
 import { Order } from "../models/Order.js";
+import { Product } from "../models/Product.js";
 import { requireAdmin } from "../middleware/auth.middleware.js";
 
 export const router = express.Router();
@@ -64,7 +66,7 @@ router.get("/", requireAdmin, async (req, res, next) => {
 // ── Create order (public) ─────────────────────────────────────────────────────
 router.post("/", async (req, res, next) => {
   try {
-    const { name, phone, notes, items, total } = req.body;
+    const { name, phone, notes, items } = req.body;
 
     if (
       !name ||
@@ -72,18 +74,45 @@ router.post("/", async (req, res, next) => {
       !phone ||
       typeof phone !== "string" ||
       !Array.isArray(items) ||
-      items.length === 0 ||
-      typeof total !== "number" ||
-      total <= 0
+      items.length === 0
     ) {
       return res.status(400).json({ error: "Invalid order payload" });
+    }
+
+    // ── Recompute prices & total from the database ────────────────────────────
+    // Never trust client-supplied prices/total — look each product up by id and
+    // use the authoritative price from MongoDB.
+    const ids = items
+      .map((i) => i?.id)
+      .filter((id) => typeof id === "string" && mongoose.isValidObjectId(id));
+
+    const products = await Product.find({ _id: { $in: ids } });
+    const productById = new Map(products.map((p) => [String(p._id), p]));
+
+    const validatedItems = [];
+    let total = 0;
+    for (const item of items) {
+      const product = productById.get(String(item?.id));
+      if (!product) {
+        return res.status(400).json({ error: "One or more products are no longer available" });
+      }
+      const qty = Number(item?.qty);
+      if (!Number.isInteger(qty) || qty <= 0) {
+        return res.status(400).json({ error: "Invalid quantity in order" });
+      }
+      validatedItems.push({ name: product.name, qty, price: product.price });
+      total += product.price * qty;
+    }
+
+    if (total <= 0) {
+      return res.status(400).json({ error: "Invalid order total" });
     }
 
     const order = await Order.create({
       name: name.trim(),
       phone: phone.trim(),
       notes: typeof notes === "string" ? notes.trim() : "",
-      items,
+      items: validatedItems,
       total,
       status: "pending",
       date: new Date().toLocaleDateString("en-GB"),

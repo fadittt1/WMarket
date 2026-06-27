@@ -22,6 +22,10 @@ const ProductSchema = new mongoose.Schema(
   {
     name: { type: String, required: true },
     price: { type: Number, required: true },
+    // Stable identity of a row coming from an external sheet sync (e.g. a barcode).
+    // Sparse + unique so manually-added products (no sourceKey) are unaffected, and
+    // re-syncing the same row updates in place instead of creating duplicates.
+    sourceKey: { type: String, default: null, index: { unique: true, sparse: true } },
     category: { type: String, default: "" },
     categories: { type: [String], default: [] },
     emoji: { type: String, default: "📦" },

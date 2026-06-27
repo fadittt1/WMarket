@@ -5,7 +5,7 @@ import * as XLSX from "xlsx";
 
 const AdminPage = () => {
   const store = useAppStore();
-  const { db, currentUser, loginReq, registerReq, uploadImage, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, markOrderDone, deleteOrder, addPack, updatePack, deletePack, updateUserRole, deleteUser } = store;
+  const { db, currentUser, loginReq, registerReq, uploadImage, addProduct, updateProduct, deleteProduct, addCategory, deleteCategory, markOrderDone, deleteOrder, addPack, updatePack, deletePack, updateUserRole, deleteUser, getSyncConfig, saveSyncConfig, runSync } = store;
   const navigate = useNavigate();
 
   const [phone, setPhone] = useState("");
@@ -35,7 +35,52 @@ const AdminPage = () => {
     }
   };
 
-  const [tab, setTab] = useState<"products" | "orders" | "categories" | "packs" | "users">("products");
+  const [tab, setTab] = useState<"products" | "orders" | "categories" | "packs" | "users" | "sync">("products");
+
+  // ── Google Sheets sync state ────────────────────────────────────────────────
+  const [syncSources, setSyncSources] = useState<{ label: string; url: string }[]>([]);
+  const [syncLastRun, setSyncLastRun] = useState<string | null>(null);
+  const [syncReport, setSyncReport] = useState<import("@/store/useStore").SyncReport | null>(null);
+  const [syncBusy, setSyncBusy] = useState(false);
+  const [syncMsg, setSyncMsg] = useState("");
+
+  useEffect(() => {
+    if (tab === "sync" && currentUser?.role === "admin") {
+      getSyncConfig().then((cfg) => {
+        if (!cfg) return;
+        setSyncSources(cfg.sources.length ? cfg.sources : [{ label: "", url: "" }]);
+        setSyncLastRun(cfg.lastRunAt);
+        setSyncReport(cfg.lastReport);
+      });
+    }
+  }, [tab, currentUser, getSyncConfig]);
+
+  const updateSyncSource = (i: number, field: "label" | "url", value: string) => {
+    setSyncSources((prev) => prev.map((s, idx) => (idx === i ? { ...s, [field]: value } : s)));
+  };
+  const addSyncSource = () => setSyncSources((prev) => [...prev, { label: "", url: "" }]);
+  const removeSyncSource = (i: number) => setSyncSources((prev) => prev.filter((_, idx) => idx !== i));
+
+  const handleSaveSync = async () => {
+    setSyncMsg("");
+    const cleaned = syncSources.map((s) => ({ label: s.label.trim(), url: s.url.trim() })).filter((s) => s.url);
+    const ok = await saveSyncConfig(cleaned);
+    setSyncMsg(ok ? "Saved." : "Failed to save (check the URLs).");
+  };
+
+  const handleRunSync = async () => {
+    setSyncBusy(true);
+    setSyncMsg("");
+    // Save current sources first so the run uses them.
+    const cleaned = syncSources.map((s) => ({ label: s.label.trim(), url: s.url.trim() })).filter((s) => s.url);
+    await saveSyncConfig(cleaned);
+    const report = await runSync();
+    setSyncBusy(false);
+    if (!report) { setSyncMsg("Sync failed."); return; }
+    setSyncReport(report);
+    setSyncLastRun(report.finishedAt || new Date().toISOString());
+    setSyncMsg(`Done — added/updated ${report.upserted}, removed ${report.removed}, skipped ${report.skipped}.`);
+  };
 
   // Product form
   const [editId, setEditId] = useState<string | null>(null);
@@ -332,7 +377,7 @@ const AdminPage = () => {
 
           {/* Tabs */}
           <div className="flex border border-border rounded-xl overflow-hidden mb-5">
-            {(["products", "orders", "categories", "packs", "users"] as const).map((t) => (
+            {(["products", "orders", "categories", "packs", "users", "sync"] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
@@ -918,6 +963,81 @@ const AdminPage = () => {
                   })}
                 </div>
               )}
+            </div>
+          )}
+
+          {/* Sync Tab */}
+          {tab === "sync" && (
+            <div>
+              <div className="bg-card rounded-2xl p-4 mb-4">
+                <h3 className="text-sm font-medium mb-1.5">Google Sheets sync</h3>
+                <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
+                  Paste the <strong>Publish to web → CSV</strong> link of each sheet. The catalog updates
+                  automatically every few minutes and whenever you press <em>Sync now</em>. Rows are
+                  auto-mapped to products; only items marked <em>En cours</em> appear in the shop.
+                </p>
+
+                {syncSources.map((s, i) => (
+                  <div key={i} className="flex gap-2 mb-2 items-center">
+                    <input
+                      value={s.label}
+                      onChange={(e) => updateSyncSource(i, "label", e.target.value)}
+                      placeholder="Label (e.g. Shoes)"
+                      className="w-[110px] bg-muted rounded-lg px-2.5 py-2 text-xs border border-border"
+                    />
+                    <input
+                      value={s.url}
+                      onChange={(e) => updateSyncSource(i, "url", e.target.value)}
+                      placeholder="https://docs.google.com/.../pub?output=csv"
+                      className="flex-1 bg-muted rounded-lg px-2.5 py-2 text-xs border border-border"
+                    />
+                    <button
+                      onClick={() => removeSyncSource(i)}
+                      className="px-2.5 py-2 text-[11px] rounded-lg bg-destructive/10 text-destructive border border-destructive/20"
+                    >
+                      🗑
+                    </button>
+                  </div>
+                ))}
+
+                <button onClick={addSyncSource} className="text-[11px] text-primary underline underline-offset-2 mt-1">
+                  + Add another sheet
+                </button>
+
+                <div className="flex gap-2 mt-4">
+                  <button onClick={handleSaveSync} className="flex-1 bg-muted text-foreground py-2.5 rounded-xl text-sm font-medium border border-border">
+                    Save
+                  </button>
+                  <button onClick={handleRunSync} disabled={syncBusy} className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl text-sm font-medium disabled:opacity-60">
+                    {syncBusy ? "Syncing…" : "Sync now"}
+                  </button>
+                </div>
+
+                {syncMsg ? <p className="text-[11px] mt-2.5 text-accent">{syncMsg}</p> : null}
+                {syncLastRun ? (
+                  <p className="text-[11px] mt-1 text-muted-foreground">Last sync: {new Date(syncLastRun).toLocaleString()}</p>
+                ) : null}
+              </div>
+
+              {syncReport ? (
+                <div className="bg-card rounded-2xl p-4 mb-4">
+                  <h3 className="text-sm font-medium mb-2">Last sync report</h3>
+                  <div className="flex gap-4 text-[11px] mb-3">
+                    <span className="text-accent">added/updated: {syncReport.upserted}</span>
+                    <span className="text-destructive">removed: {syncReport.removed}</span>
+                    <span className="text-muted-foreground">skipped: {syncReport.skipped}</span>
+                  </div>
+                  {syncReport.sources?.map((sr, i) => (
+                    <div key={i} className="text-[11px] text-muted-foreground border-t border-border pt-1.5 mt-1.5">
+                      <strong className="text-foreground">{sr.label || sr.url}</strong> — {sr.rows} rows, {sr.upserted} synced, {sr.skipped} skipped
+                      {sr.error ? <span className="text-destructive"> · error: {sr.error}</span> : null}
+                    </div>
+                  ))}
+                  {syncReport.errors?.length ? (
+                    <p className="text-[11px] text-destructive mt-2">Errors: {syncReport.errors.map((e) => `${e.source}: ${e.message}`).join("; ")}</p>
+                  ) : null}
+                </div>
+              ) : null}
             </div>
           )}
 
