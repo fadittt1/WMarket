@@ -42,6 +42,30 @@ export function parseCsv(text) {
   return rows;
 }
 
+// Normalise a Google Sheets "Publish to web" link into a CSV-download link.
+// Handles the common mistake of pasting the HTML (`pubhtml`) or web-page link.
+export function normalizeSheetUrl(url) {
+  let u = String(url || "").trim();
+  if (!u) return u;
+  try {
+    // "Publish to web → Web page" gives /pubhtml — the CSV variant is /pub?output=csv
+    u = u.replace("/pubhtml", "/pub");
+    const parsed = new URL(u);
+    // Convert a normal edit link (…/d/<id>/edit#gid=) to an export-CSV link.
+    const editMatch = parsed.pathname.match(/\/spreadsheets\/d\/([^/]+)\/edit/);
+    if (editMatch) {
+      const gid = (parsed.hash.match(/gid=(\d+)/) || [])[1] || parsed.searchParams.get("gid") || "0";
+      return `https://docs.google.com/spreadsheets/d/${editMatch[1]}/export?format=csv&gid=${gid}`;
+    }
+    // Otherwise force CSV output on the published link.
+    parsed.searchParams.set("output", "csv");
+    parsed.searchParams.delete("usp"); // drop embed marker
+    return parsed.toString();
+  } catch {
+    return u;
+  }
+}
+
 // Turn a parsed CSV (array of arrays) into array of objects keyed by header.
 function rowsToObjects(rows) {
   if (!rows.length) return [];
@@ -221,11 +245,16 @@ export async function syncFromSheets() {
   const seenKeys = new Set();
 
   for (const source of cfg.sources) {
+    const fetchUrl = normalizeSheetUrl(source.url);
     const srcReport = { label: source.label, url: source.url, rows: 0, upserted: 0, skipped: 0, headers: [], skippedSamples: [] };
     try {
-      const res = await fetch(source.url, { redirect: "follow" });
+      const res = await fetch(fetchUrl, { redirect: "follow" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
+      // Guard: a CSV never starts with HTML. This catches a /pubhtml or non-public link.
+      if (/^\s*<(?:!doctype|html)/i.test(text)) {
+        throw new Error("Link returned a web page, not CSV. In Publish to web choose the CSV format (or share the sheet so the link is public).");
+      }
       const parsed = parseCsv(text);
       const objects = rowsToObjects(parsed);
       srcReport.rows = objects.length;
