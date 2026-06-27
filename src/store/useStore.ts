@@ -71,7 +71,11 @@ export interface SyncReport {
   removed: number;
   skipped: number;
   errors: { source: string; message: string }[];
-  sources: { label: string; url: string; rows: number; upserted: number; skipped: number; error?: string }[];
+  sources: {
+    label: string; url: string; rows: number; upserted: number; skipped: number; error?: string;
+    headers?: string[];
+    skippedSamples?: { reason: string; rawName?: string; priceText?: string; price?: number; etat?: string; categoryRaw?: string; size?: string; barcode?: string }[];
+  }[];
 }
 
 interface DB {

@@ -1031,6 +1031,17 @@ const AdminPage = () => {
                     <div key={i} className="text-[11px] text-muted-foreground border-t border-border pt-1.5 mt-1.5">
                       <strong className="text-foreground">{sr.label || sr.url}</strong> — {sr.rows} rows, {sr.upserted} synced, {sr.skipped} skipped
                       {sr.error ? <span className="text-destructive"> · error: {sr.error}</span> : null}
+                      {sr.headers?.length ? (
+                        <div className="mt-1 text-[10px]">Detected columns: <span className="text-foreground">{sr.headers.join(" | ")}</span></div>
+                      ) : null}
+                      {sr.skippedSamples?.length ? (
+                        <div className="mt-1 text-[10px]">
+                          <span className="text-destructive">Why rows were skipped (samples):</span>
+                          {sr.skippedSamples.map((s, j) => (
+                            <div key={j} className="pl-2">• [{s.reason}] name=<code>{s.rawName || "∅"}</code> price=<code>{s.priceText || "∅"}</code> etat=<code>{s.etat || "∅"}</code></div>
+                          ))}
+                        </div>
+                      ) : null}
                     </div>
                   ))}
                   {syncReport.errors?.length ? (
