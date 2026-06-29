@@ -66,13 +66,13 @@ const Hero = () => (
       {/* Central quote */}
       <div className="relative z-10 text-center px-6 flex flex-col items-center">
         <motion.img
-          src="/logo.svg"
+          src="/logo.jpg"
           alt="W Market"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.7, delay: 0.4 }}
-          className="w-20 h-20 md:w-28 md:h-28 rounded-full object-contain mb-4 drop-shadow-md"
+          className="w-28 h-28 md:w-40 md:h-40 rounded-full object-contain mb-4 drop-shadow-md"
         />
         <motion.p
           initial={{ opacity: 0, scale: 0.95 }}
