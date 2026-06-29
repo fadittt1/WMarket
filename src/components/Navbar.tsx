@@ -14,10 +14,10 @@ const Navbar = ({ onCartOpen }: NavbarProps) => {
     <nav className="flex justify-between items-center px-5 md:px-10 py-4 md:py-5 sticky top-0 glass z-50 border-b border-border/50">
       <Link to="/" className="flex items-center gap-2 font-display text-[22px] tracking-tight text-foreground">
         <img
-          src="/logo.svg"
+          src="/logo.jpg"
           alt="W Market"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
-          className="w-8 h-8 rounded-full object-contain shrink-0"
+          className="w-11 h-11 rounded-full object-contain shrink-0"
         />
         <span>W<em className="text-gradient italic">Market</em></span>
       </Link>
