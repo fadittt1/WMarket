@@ -66,7 +66,7 @@ const Hero = () => (
       {/* Central quote */}
       <div className="relative z-10 text-center px-6 flex flex-col items-center">
         <motion.img
-          src="/logo.png"
+          src="/logo.svg"
           alt="W Market"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
           initial={{ opacity: 0, scale: 0.8 }}

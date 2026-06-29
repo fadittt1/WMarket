@@ -1,7 +1,7 @@
 const Footer = () => (
   <footer className="bg-primary text-primary-foreground/60 py-8 md:py-12 px-5 md:px-10 text-center mt-10 rounded-t-[28px]">
     <img
-      src="/logo.png"
+      src="/logo.svg"
       alt="W Market"
       onError={(e) => { e.currentTarget.style.display = "none"; }}
       className="w-16 h-16 rounded-full object-contain mx-auto mb-3"
