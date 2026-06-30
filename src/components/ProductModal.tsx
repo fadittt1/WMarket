@@ -26,6 +26,7 @@ const ProductModal = ({ product, onClose }: Props) => {
 
   const reactions = product.reactions || { love: 0, haha: 0, like: 0 };
   const comments = product.comments || [];
+  const soldOut = !!product.status && product.status !== "available";
 
   const handleReaction = (type: ReactionType) => {
     if (!currentUser) { onClose(); navigate("/admin"); return; }
@@ -87,28 +88,46 @@ const ProductModal = ({ product, onClose }: Props) => {
           </div>
 
           {/* Product display */}
-          <div className="h-[200px] flex items-center justify-center bg-muted/30 relative">
+          <div className={`h-[200px] flex items-center justify-center bg-muted/30 relative ${soldOut ? "opacity-60 grayscale-[35%]" : ""}`}>
             {product.img ? (
               <img src={product.img} alt={product.name} className="w-full h-full object-cover" />
             ) : (
               <span className="text-[80px]">{product.emoji || "📦"}</span>
             )}
-            {product.badge && (
-              <div className="absolute top-3 left-3 bg-accent text-accent-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-medium shadow-soft">
-                {product.badge}
-              </div>
+            <div className="absolute top-3 left-3 flex flex-col items-start gap-1">
+              {product.sex && (
+                <span className={`text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-medium shadow-soft ${product.sex === "Femme" ? "bg-pink-500/90 text-white" : "bg-sky-600/90 text-white"}`}>
+                  {product.sex}
+                </span>
+              )}
+              {product.badge && (
+                <span className="bg-accent text-accent-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-medium shadow-soft">
+                  {product.badge}
+                </span>
+              )}
+            </div>
+            {soldOut && (
+              <span className="absolute top-3 right-3 bg-destructive text-destructive-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-semibold shadow-soft">
+                {product.status === "sold" ? "Vendu" : "Hors stock"}
+              </span>
             )}
           </div>
 
           {/* Price & Add to cart */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-border/60">
             <span className="font-display text-lg text-accent">{product.price.toFixed(3)} TND</span>
-            <button
-              onClick={() => addToCart(product.id)}
-              className="bg-accent text-accent-foreground px-4 py-2 rounded-full text-xs font-medium shadow-soft hover:shadow-elevated active:scale-95 transition-all"
-            >
-              Add to Cart
-            </button>
+            {soldOut ? (
+              <span className="text-xs uppercase tracking-wider text-destructive font-semibold border border-destructive/30 rounded-full px-4 py-2">
+                {product.status === "sold" ? "Vendu" : "Hors stock"}
+              </span>
+            ) : (
+              <button
+                onClick={() => addToCart(product.id)}
+                className="bg-accent text-accent-foreground px-4 py-2 rounded-full text-xs font-medium shadow-soft hover:shadow-elevated active:scale-95 transition-all"
+              >
+                Add to Cart
+              </button>
+            )}
           </div>
 
           {/* Reactions */}

@@ -972,9 +972,10 @@ const AdminPage = () => {
               <div className="bg-card rounded-2xl p-4 mb-4">
                 <h3 className="text-sm font-medium mb-1.5">Google Sheets sync</h3>
                 <p className="text-[11px] text-muted-foreground mb-3 leading-relaxed">
-                  Paste the <strong>Publish to web → CSV</strong> link of each sheet. The catalog updates
-                  automatically every few minutes and whenever you press <em>Sync now</em>. Rows are
-                  auto-mapped to products; only items marked <em>En cours</em> appear in the shop.
+                  Publish the <strong>whole document</strong> to web (File → Publish to web → <em>Entire document</em> → Web page),
+                  then paste that <strong>one link</strong> below. Every tab becomes a category automatically. The catalog
+                  updates every few minutes and whenever you press <em>Sync now</em>. Items marked <em>Vendu</em> /
+                  <em>Non trouver</em> stay visible but show as out-of-stock and can't be ordered.
                 </p>
 
                 {syncSources.map((s, i) => (

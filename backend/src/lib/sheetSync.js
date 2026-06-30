@@ -66,6 +66,61 @@ export function normalizeSheetUrl(url) {
   }
 }
 
+function decodeEntities(s) {
+  return String(s)
+    .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&nbsp;/g, " ");
+}
+
+// Parse a whole-document "Publish to web" HTML page into its list of tabs.
+// The published page contains <li id="sheet-button-<gid>">…<a>Tab name</a>.
+export function parsePublishedSheets(html) {
+  const out = [];
+  const seen = new Set();
+  const re = /sheet-button-(\d+)"[^>]*>\s*(?:<a[^>]*>)?\s*([^<]*)/g;
+  let m;
+  while ((m = re.exec(html)) !== null) {
+    const gid = m[1];
+    if (seen.has(gid)) continue;
+    seen.add(gid);
+    out.push({ gid, name: decodeEntities(m[2]).trim() });
+  }
+  // Fallback: at least collect distinct gids if the markup changed.
+  if (!out.length) {
+    for (const mm of html.matchAll(/[?&]gid=(\d+)/g)) {
+      if (!seen.has(mm[1])) { seen.add(mm[1]); out.push({ gid: mm[1], name: "" }); }
+    }
+  }
+  return out;
+}
+
+// Expand a configured source into one entry per tab.
+// - A whole-document publish link (…/d/e/<token>/pubhtml or no output=csv) → every tab,
+//   each tagged with its tab name as the category.
+// - A single-tab CSV/edit link → just that one (category = the source label).
+export async function expandSource(source) {
+  const raw = String(source.url || "").trim();
+  const tokenMatch = raw.match(/\/d\/e\/([^/]+)/);
+  const hasCsv = /output=csv/i.test(raw);
+
+  if (tokenMatch && !hasCsv) {
+    const token = tokenMatch[1];
+    const pubHtmlUrl = `https://docs.google.com/spreadsheets/d/e/${token}/pubhtml`;
+    const res = await fetch(pubHtmlUrl, { redirect: "follow" });
+    if (!res.ok) throw new Error(`HTTP ${res.status} fetching the published document`);
+    const html = await res.text();
+    const sheets = parsePublishedSheets(html);
+    if (sheets.length > 1 || (sheets.length === 1 && sheets[0].name)) {
+      return sheets.map((s) => ({
+        categoryName: s.name || source.label || "Divers",
+        csvUrl: `https://docs.google.com/spreadsheets/d/e/${token}/pub?gid=${s.gid}&single=true&output=csv`,
+      }));
+    }
+  }
+  // Single sheet
+  return [{ categoryName: source.label || "Divers", csvUrl: normalizeSheetUrl(raw) }];
+}
+
 // Turn a parsed CSV (array of arrays) into array of objects keyed by header.
 function rowsToObjects(rows) {
   if (!rows.length) return [];
@@ -158,6 +213,39 @@ function pickSellingPrice(row) {
   return "";
 }
 
+// Normalise a sex/gender value to "Homme" / "Femme" / "".
+function normSex(value) {
+  const n = normHeader(value);
+  if (!n) return "";
+  if (n.startsWith("homme") || n === "h" || n === "m" || n.includes("homme") || n.includes("men")) return "Homme";
+  if (n.startsWith("femme") || n === "f" || n.includes("femme") || n.includes("women") || n.includes("woman") || n.includes("fille")) return "Femme";
+  return "";
+}
+
+// Detect the Homme/Femme value: prefer a dedicated column, else scan all cells.
+function pickSex(row) {
+  const byHeader = pick(row, ["sexe", "sex", "genre", "gender", "homme/femme", "h/f", "categorie", "category"]);
+  const fromHeader = normSex(byHeader);
+  if (fromHeader) return fromHeader;
+  for (const key of Object.keys(row)) {
+    const s = normSex(row[key]);
+    if (s) return s;
+  }
+  return "";
+}
+
+// A friendly emoji per category (used only when a product has no image).
+function emojiFor(category) {
+  const c = normHeader(category);
+  if (c.includes("shoe") || c.includes("chauss")) return "👟";
+  if (c.includes("cloth") || c.includes("vetement") || c.includes("habill")) return "👕";
+  if (c.includes("candy") || c.includes("coffee") || c.includes("choco") || c.includes("sucr")) return "🍬";
+  if (c.includes("parfum") || c.includes("accessoire")) return "🧴";
+  if (c.includes("sport")) return "🏅";
+  if (c.includes("electro") || c.includes("electronic") || c.includes("menager")) return "🔌";
+  return "🛍️";
+}
+
 // Parse a French/European formatted price like "1 170,00" or "170,00 TND" → 170
 function parsePrice(text) {
   if (!text) return NaN;
@@ -173,43 +261,44 @@ function parsePrice(text) {
 // Auto-cast: map one spreadsheet row (shoe model) → website product model.
 // Returns { product } for available items, or { skip, reason } otherwise.
 // ─────────────────────────────────────────────────────────────────────────────
-export function mapRowToProduct(row, sourceLabel = "") {
+export function mapRowToProduct(row, categoryName = "") {
   const rawName = pickName(row);
   const priceText = pickSellingPrice(row);
-  const categoryRaw = pick(row, ["categorie", "category", "genre", "type"]);
+  const categoryRaw = pick(row, ["categorie", "category", "rayon", "section", "type"]);
   const size = pick(row, ["taille", "pointure", "size"]);
-  const etat = pick(row, ["etat", "status", "statut", "state"]);
-  const photo = pick(row, ["photo", "image", "img", "image url", "imageurl"]);
+  const etat = pick(row, ["etat", "status", "statut", "state", "disponibilite"]);
+  const photo = pick(row, ["photo", "image", "img", "image url", "imageurl", "photo url"]);
   const barcode = pick(row, ["code a barre", "code barre", "barcode", "sku", "ean"]);
   const id = pick(row, ["id", "ref", "reference"]);
+  const sex = pickSex(row);
 
   const price = parsePrice(priceText);
 
-  // Build a stable identity. Prefer barcode, then id. Namespace by source label so
-  // two sheets can't collide on the same short id.
+  // Build a stable identity. Prefer barcode, then id. Namespace by the tab/category
+  // so two sheets can't collide on the same short id (e.g. C1 in two tabs).
   const key = barcode || id;
-  const sourceKey = key ? `${sourceLabel || "src"}:${key}` : null;
+  const sourceKey = key ? `${categoryName || "src"}:${key}` : null;
 
   // Raw detected values, surfaced in the sync report so misconfigured columns are obvious.
-  const detected = { rawName, priceText, price, etat, categoryRaw, size, barcode: barcode || id };
+  const detected = { rawName, priceText, price, etat, sex, size, barcode: barcode || id };
 
   if (!rawName || Number.isNaN(price) || price <= 0) {
     return { skip: true, reason: "missing name or price", sourceKey, detected };
   }
 
-  // Availability: an item is for-sale UNLESS its Etat clearly marks it sold or missing.
-  // (Empty/unknown Etat → still listed, so a dropdown that doesn't export cleanly
-  // doesn't silently hide the whole catalog.)
+  // Stock status from Etat. Sold/unavailable items are STILL listed (with a badge);
+  // they just can't be added to the cart.
   const e = normHeader(etat);
-  const notForSale = e.includes("vendu") || e.includes("trouv") || e.includes("sold");
-  if (notForSale) {
-    return { skip: true, reason: `etat=${etat || "empty"}`, sourceKey, detected };
-  }
+  let status = "available";
+  if (e.includes("vendu") || e.includes("sold")) status = "sold";
+  else if (e.includes("trouv") || e.includes("rupture") || e.includes("indispo")) status = "unavailable";
+
+  // Category: prefer the tab name (the sheet is organised by category). Fall back to an
+  // explicit category column only if present and not actually a Homme/Femme value.
+  let category = categoryName || "Divers";
+  if (categoryRaw && !normSex(categoryRaw)) category = categoryRaw;
 
   const name = size ? `${rawName} — ${size}` : rawName;
-  const categories = categoryRaw
-    ? categoryRaw.split(",").map((c) => c.trim()).filter(Boolean)
-    : ["Chaussures"];
   const img = /^https?:\/\//i.test(photo) ? photo : "";
 
   return {
@@ -217,11 +306,13 @@ export function mapRowToProduct(row, sourceLabel = "") {
       sourceKey,
       name,
       price,
-      category: categories[0],
-      categories,
-      emoji: "👟",
+      category,
+      categories: [category],
+      sex,
+      status,
+      emoji: emojiFor(category),
       img,
-      badge: size ? `Pointure ${size}` : "",
+      badge: size ? `Taille ${size}` : "",
     },
   };
 }
@@ -243,17 +334,30 @@ export async function syncFromSheets() {
   };
 
   const seenKeys = new Set();
+  let fetchFailures = 0;
 
+  // Expand each configured source (a whole-document link) into its tabs.
+  const tabs = [];
   for (const source of cfg.sources) {
-    const fetchUrl = normalizeSheetUrl(source.url);
-    const srcReport = { label: source.label, url: source.url, rows: 0, upserted: 0, skipped: 0, headers: [], skippedSamples: [] };
     try {
-      const res = await fetch(fetchUrl, { redirect: "follow" });
+      const expanded = await expandSource(source);
+      tabs.push(...expanded);
+    } catch (err) {
+      fetchFailures++;
+      report.errors.push({ source: source.label || source.url, message: err.message });
+      report.sources.push({ label: source.label || source.url, error: err.message, rows: 0, upserted: 0, skipped: 0 });
+    }
+  }
+
+  for (const tab of tabs) {
+    const srcReport = { label: tab.categoryName, url: tab.csvUrl, rows: 0, upserted: 0, skipped: 0, headers: [], skippedSamples: [] };
+    try {
+      const res = await fetch(tab.csvUrl, { redirect: "follow" });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const text = await res.text();
-      // Guard: a CSV never starts with HTML. This catches a /pubhtml or non-public link.
+      // Guard: a CSV never starts with HTML. This catches a non-public link.
       if (/^\s*<(?:!doctype|html)/i.test(text)) {
-        throw new Error("Link returned a web page, not CSV. In Publish to web choose the CSV format (or share the sheet so the link is public).");
+        throw new Error("Link returned a web page, not CSV. Publish the whole document to web so every tab is public.");
       }
       const parsed = parseCsv(text);
       const objects = rowsToObjects(parsed);
@@ -261,7 +365,7 @@ export async function syncFromSheets() {
       srcReport.headers = parsed.length ? parsed[0].map((h) => String(h).trim()) : [];
 
       for (const row of objects) {
-        const mapped = mapRowToProduct(row, source.label);
+        const mapped = mapRowToProduct(row, tab.categoryName);
         if (mapped.skip) {
           srcReport.skipped++; report.skipped++;
           if (srcReport.skippedSamples.length < 5) {
@@ -284,16 +388,18 @@ export async function syncFromSheets() {
         report.upserted++;
       }
     } catch (err) {
+      fetchFailures++;
       srcReport.error = err.message;
-      report.errors.push({ source: source.label || source.url, message: err.message });
+      report.errors.push({ source: tab.categoryName, message: err.message });
     }
     report.sources.push(srcReport);
   }
 
-  // Remove sync-managed products that vanished/sold (have a sourceKey but weren't seen).
-  // Guarded: only runs if at least one source was fetched without error, to avoid wiping
-  // the catalog when a sheet is temporarily unreachable.
-  if (cfg.sources.length > 0 && report.errors.length < cfg.sources.length) {
+  // Remove sync-managed products whose row was DELETED from the sheet (have a sourceKey
+  // but weren't seen this run). Sold items are NOT removed — they were upserted with
+  // status:"sold". Guarded: skip removal entirely if any fetch failed, so a temporarily
+  // unreachable document never wipes the catalog.
+  if (cfg.sources.length > 0 && fetchFailures === 0 && seenKeys.size > 0) {
     const del = await Product.deleteMany({
       sourceKey: { $type: "string", $nin: [...seenKeys] },
     });

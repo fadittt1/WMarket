@@ -31,6 +31,11 @@ const ProductSchema = new mongoose.Schema(
     emoji: { type: String, default: "📦" },
     img: { type: String, default: "" }, // base64 or URL
     badge: { type: String, default: "" },
+    // Stock status from the sheet's Etat field: available (En cours), sold (Vendu),
+    // or unavailable (Non trouver). Sold/unavailable items are shown but can't be ordered.
+    status: { type: String, enum: ["available", "sold", "unavailable"], default: "available" },
+    // Homme / Femme (or empty) — shown as a badge for shoes/clothes.
+    sex: { type: String, default: "" },
     packOnly: { type: Boolean, default: false },
     reactions: { type: ReactionsSchema, default: () => ({}) },
     comments: { type: [CommentSchema], default: [] },

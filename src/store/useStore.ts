@@ -9,6 +9,8 @@ export interface Comment {
   date: string;
 }
 
+export type StockStatus = "available" | "sold" | "unavailable";
+
 export interface Product {
   id: string;
   name: string;
@@ -18,6 +20,8 @@ export interface Product {
   emoji: string;
   img: string;
   badge: string;
+  status?: StockStatus;
+  sex?: string;
   packOnly?: boolean;
   reactions?: Record<ReactionType, number>;
   comments?: Comment[];
@@ -249,10 +253,12 @@ export function useStore() {
   }, []);
 
   const addToCart = useCallback((id: string) => {
+    const product = db.products.find((p) => p.id === id);
+    // Don't allow ordering sold / unavailable items
+    if (product && product.status && product.status !== "available") return;
     setCart((prev) => {
       const existing = prev.find((c) => c.id === id);
       if (existing) return prev.map((c) => (c.id === id ? { ...c, qty: c.qty + 1 } : c));
-      const product = db.products.find((p) => p.id === id);
       if (!product) return prev;
       return [...prev, { ...product, qty: 1 }];
     });
@@ -266,6 +272,7 @@ export function useStore() {
       for (const pid of pack.productIds) {
         const product = db.products.find((p) => p.id === pid);
         if (!product) continue;
+        if (product.status && product.status !== "available") continue; // skip sold items
         const existing = cart.find((c) => c.id === pid);
         if (existing) {
           cart = cart.map((c) => (c.id === pid ? { ...c, qty: c.qty + 1 } : c));

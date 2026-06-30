@@ -163,13 +163,29 @@ const ProductGrid = () => {
                   onClick={() => setSelectedProduct(p)}
                   className="group break-inside-avoid mb-3 md:mb-4 bg-card rounded-2xl overflow-hidden cursor-pointer active:scale-[0.97] transition-all duration-200 shadow-card hover:shadow-elevated relative"
                 >
-                  {p.badge && (
-                    <div className="absolute top-2.5 left-2.5 bg-accent text-accent-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full z-10 font-medium shadow-soft">
-                      {p.badge}
-                    </div>
+                  {/* Top-left badges: sex (Homme/Femme) + size */}
+                  <div className="absolute top-2.5 left-2.5 z-10 flex flex-col items-start gap-1">
+                    {p.sex && (
+                      <span className={`text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-medium shadow-soft ${p.sex === "Femme" ? "bg-pink-500/90 text-white" : "bg-sky-600/90 text-white"}`}>
+                        {p.sex}
+                      </span>
+                    )}
+                    {p.badge && (
+                      <span className="bg-accent text-accent-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-medium shadow-soft">
+                        {p.badge}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Sold / out-of-stock badge */}
+                  {p.status && p.status !== "available" && (
+                    <span className="absolute top-2.5 right-2.5 z-10 bg-destructive text-destructive-foreground text-[9px] tracking-[0.1em] uppercase px-2.5 py-0.5 rounded-full font-semibold shadow-soft">
+                      {p.status === "sold" ? "Vendu" : "Hors stock"}
+                    </span>
                   )}
+
                   <div
-                    className="flex items-center justify-center bg-muted/50 overflow-hidden relative"
+                    className={`flex items-center justify-center bg-muted/50 overflow-hidden relative ${p.status && p.status !== "available" ? "opacity-60 grayscale-[35%]" : ""}`}
                     style={p.img ? undefined : { height: `${EMOJI_HEIGHTS[i % EMOJI_HEIGHTS.length]}px` }}
                   >
                     {p.img ? (
@@ -198,12 +214,18 @@ const ProductGrid = () => {
 
                     <div className="flex items-center justify-between mt-1.5">
                       <div className="font-display text-[15px] text-accent">{p.price.toFixed(3)} TND</div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); addToCart(p.id); }}
-                        className="bg-accent text-accent-foreground w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium shadow-soft hover:shadow-elevated active:scale-90 transition-all duration-150"
-                      >
-                        +
-                      </button>
+                      {p.status && p.status !== "available" ? (
+                        <span className="text-[9px] uppercase tracking-wider text-destructive font-semibold border border-destructive/30 rounded-full px-2 py-1">
+                          {p.status === "sold" ? "Vendu" : "Hors stock"}
+                        </span>
+                      ) : (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); addToCart(p.id); }}
+                          className="bg-accent text-accent-foreground w-7 h-7 rounded-full flex items-center justify-center text-sm font-medium shadow-soft hover:shadow-elevated active:scale-90 transition-all duration-150"
+                        >
+                          +
+                        </button>
+                      )}
                     </div>
                   </div>
                 </motion.div>
