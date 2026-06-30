@@ -19,7 +19,17 @@ const ProductGrid = () => {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [selectedPack, setSelectedPack] = useState<Pack | null>(null);
 
-  const cats = ["All", ...db.categories.filter((c) => c !== "All")];
+  // Build the filter list automatically from the categories actually present on
+  // products (i.e. the synced tab names), merged with any manually-added ones.
+  const cats = useMemo(() => {
+    const fromProducts = db.products.flatMap((p) =>
+      p.categories?.length ? p.categories : p.category ? [p.category] : []
+    );
+    const ordered = [...db.categories, ...fromProducts]
+      .map((c) => (c || "").trim())
+      .filter((c) => c && c !== "All");
+    return ["All", ...Array.from(new Set(ordered))];
+  }, [db.categories, db.products]);
 
   // Shuffle products so new ones are mixed in, not always at the end
   const shuffledProducts = useMemo(() => {
