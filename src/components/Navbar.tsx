@@ -17,7 +17,7 @@ const Navbar = ({ onCartOpen }: NavbarProps) => {
           src="/logo.jpg"
           alt="W Market"
           onError={(e) => { e.currentTarget.style.display = "none"; }}
-          className="w-11 h-11 rounded-full object-contain shrink-0"
+          className="w-8 h-8 rounded-full object-contain shrink-0"
         />
         <span>W<em className="text-gradient italic">Market</em></span>
       </Link>
