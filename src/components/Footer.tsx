@@ -1,11 +1,5 @@
 const Footer = () => (
   <footer className="bg-primary text-primary-foreground/60 py-8 md:py-12 px-5 md:px-10 text-center mt-10 rounded-t-[28px]">
-    <img
-      src="/logo.jpg"
-      alt="W Market"
-      onError={(e) => { e.currentTarget.style.display = "none"; }}
-      className="w-30 h-30 rounded-full object-contain mx-auto mb-3"
-    />
     <strong className="block font-display text-2xl text-primary-foreground font-normal mb-1.5">
       W<em className="italic opacity-80">Market</em>
     </strong>
