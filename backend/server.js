@@ -55,7 +55,8 @@ app.use(
 const allowedOrigins = isProduction
   ? [
       process.env.FRONTEND_URL, // Manually set
-      "https://w-market.vercel.app" // Main production domain
+      "https://www.wmarket.tn/", // Main production domain
+      "https://wmarket.tn/"
     ].filter(Boolean)
   : ["http://localhost:8080", "http://localhost:3000", "http://localhost:5173"];
 
