@@ -4,6 +4,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { StoreProvider } from "@/store/StoreContext";
+import { Analytics } from "@vercel/analytics/react";
 import ShopPage from "./pages/ShopPage";
 import OrderPage from "./pages/OrderPage";
 import SuccessPage from "./pages/SuccessPage";
@@ -28,6 +29,7 @@ const App = () => (
           </Routes>
         </StoreProvider>
       </BrowserRouter>
+      <Analytics />
     </TooltipProvider>
   </QueryClientProvider>
 );
